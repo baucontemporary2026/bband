@@ -52,10 +52,57 @@
     .segmented { display: flex; background: var(--light-gray); padding: 3px; border-radius: 9px; margin-bottom: 16px; }
     .seg-btn { flex: 1; border: none; background: transparent; padding: 8px 12px; font-size: 13px; font-weight: 600; border-radius: 7px; cursor: pointer; }
     .seg-btn.active { background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
-    .grid-wrap { overflow-x: auto; max-width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #fff; }
-    table.time-grid { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; }
-    table.time-grid th, table.time-grid td { border: 1px solid var(--border); padding: 8px 4px; min-width: 48px; height: 38px; user-select: none; }
-    table.time-grid th { background: #f8f8fb; font-weight: 600; }
+
+    /* 스프레드시트 스타일 틀 고정(Sticky Header & First Column) */
+    .grid-wrap { 
+      max-height: 400px; /* 세로 스크롤 높이 제한 */
+      overflow: auto;    /* 가로/세로 동시 스크롤 */
+      max-width: 100%; 
+      border-radius: 12px; 
+      border: 1px solid var(--border); 
+      background: #fff; 
+    }
+    table.time-grid { 
+      width: 100%; 
+      border-collapse: separate; 
+      border-spacing: 0; 
+      text-align: center; 
+      font-size: 12px; 
+    }
+    table.time-grid th, table.time-grid td { 
+      border-bottom: 1px solid var(--border); 
+      border-right: 1px solid var(--border); 
+      padding: 8px 4px; 
+      min-width: 48px; 
+      height: 38px; 
+      user-select: none; 
+      background: #fff; 
+    }
+    /* 1. 상단 날짜 헤더 고정 */
+    table.time-grid thead th { 
+      position: sticky; 
+      top: 0; 
+      z-index: 20; 
+      background: #f8f8fb; 
+      border-bottom: 2px solid var(--border); 
+    }
+    /* 2. 좌측 시간(행) 고정 */
+    table.time-grid tbody th { 
+      position: sticky; 
+      left: 0; 
+      z-index: 10; 
+      background: #f8f8fb; 
+      border-right: 2px solid var(--border); 
+    }
+    /* 3. 좌측 상단 교차점(시간/날짜 타이틀 칸) 최우선 고정 */
+    table.time-grid thead th:first-child { 
+      position: sticky; 
+      left: 0; 
+      top: 0; 
+      z-index: 30; 
+      background: #f8f8fb; 
+    }
+
     .slot { cursor: pointer; }
     .slot.selected { background-color: var(--accent) !important; color: white; }
     .badge { display: inline-block; padding: 8px 14px; border-radius: 14px; font-size: 13px; font-weight: 600; margin-right: 6px; margin-bottom: 8px; background: var(--light-gray); color: #1c1c1e; cursor: pointer; }
@@ -150,7 +197,7 @@
         </div>
 
         <div id="sec-grid">
-          <div style="font-size:12px; color:var(--accent); font-weight:600; margin-bottom:8px;">💡 드래그하거나 터치해서 시간대를 선택하세요.</div>
+          <div style="font-size:12px; color:var(--accent); font-weight:600; margin-bottom:8px;">💡 상단 날짜와 왼쪽 시간표가 고정됩니다. 스크롤하며 편하게 체크하세요!</div>
           <div class="grid-wrap">
             <table class="time-grid">
               <thead><tr id="grid-head"></tr></thead>
