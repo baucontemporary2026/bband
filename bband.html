@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>밴드 합주 일정 조율</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+  <style>
+    :root {
+      --bg: #f5f5f7;
+      --card: #ffffff;
+      --accent: #2c2c2e;
+      --gray: #8e8e93;
+      --light-gray: #e5e5ea;
+      --border: #e0e0e8;
+      --radius: 14px;
+      --shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0; padding: 0;
+      font-family: "Pretendard", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+      background-color: var(--bg); color: #1d1d1f;
+      display: flex; flex-direction: column; align-items: center;
+      min-height: 100vh; padding-bottom: 40px;
+    }
+    header {
+      position: sticky; top: 0; z-index: 100; width: 100%;
+      background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08); padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; cursor: pointer; }
+    .brand-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; }
+    .room-badge { background: var(--light-gray); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .container { width: 100%; max-width: 680px; padding: 16px; }
+    .card { background: var(--card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    h2 { font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 8px; }
+    .sub { color: var(--gray); font-size: 14px; margin-bottom: 16px; }
+    .lobby-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .lobby-btn { background: var(--card); border: 2px solid var(--border); border-radius: 16px; padding: 20px 14px; text-align: center; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .lobby-btn.active { border-color: var(--accent); background: #f8f8fa; }
+    .lobby-icon { width: 48px; height: 48px; border-radius: 50%; background: var(--light-gray); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    label { font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 6px; display: block; text-transform: uppercase; }
+    input, select, textarea { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 15px; font-family: inherit; background: #f8f8fb; outline: none; margin-bottom: 14px; }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .btn { width: 100%; background: var(--accent); color: white; border: none; border-radius: 12px; padding: 14px; font-size: 16px; font-weight: 600; cursor: pointer; }
+    .btn:active { opacity: 0.8; }
+    .btn-secondary { background: var(--light-gray); color: #000; }
+    .segmented { display: flex; background: var(--light-gray); padding: 3px; border-radius: 9px; margin-bottom: 16px; }
+    .seg-btn { flex: 1; border: none; background: transparent; padding: 8px 12px; font-size: 13px; font-weight: 600; border-radius: 7px; cursor: pointer; }
+    .seg-btn.active { background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .grid-wrap { overflow-x: auto; max-width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #fff; }
+    table.time-grid { width: 100%; border-collapse: collapse; text-align: center; font-size: 12px; }
+    table.time-grid th, table.time-grid td { border: 1px solid var(--border); padding: 8px 4px; min-width: 48px; height: 38px; user-select: none; }
+    table.time-grid th { background: #f8f8fb; font-weight: 600; }
+    .slot { cursor: pointer; }
+    .slot.selected { background-color: var(--accent) !important; color: white; }
+    .badge { display: inline-block; padding: 8px 14px; border-radius: 14px; font-size: 13px; font-weight: 600; margin-right: 6px; margin-bottom: 8px; background: var(--light-gray); color: #1c1c1e; cursor: pointer; }
+    .heat-0 { background: #fff; }
+    .heat-1 { background: #f0f0f2; }
+    .heat-2 { background: #dcdce0; }
+    .heat-3 { background: #b8b8be; }
+    .heat-4 { background: #717177; color: white; }
+    .heat-5 { background: #2c2c2e; color: white; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand" onclick="goLobby()">
+      <div class="brand-icon">🎸</div>
+      <span>밴드 합주 조율</span>
+    </div>
+    <div id="room-info" class="hidden">
+      <span class="room-badge" id="badge-code">코드: -</span>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 로비 뷰 -->
+    <div id="view-lobby" class="card">
+      <h2>합주 시간 조율하기</h2>
+      <div class="sub">팀원들과 원활하게 합주 가능 시간을 맞추고 최적의 시간을 투표하세요.</div>
+
+      <div class="lobby-grid">
+        <div class="lobby-btn active" id="tab-create" onclick="switchLobby('create')">
+          <div class="lobby-icon">➕</div>
+          <div style="font-weight:700;">방 만들기</div>
+        </div>
+        <div class="lobby-btn" id="tab-join" onclick="switchLobby('join')">
+          <div class="lobby-icon">🔑</div>
+          <div style="font-weight:700;">입장하기</div>
+        </div>
+      </div>
+
+      <div id="box-create" style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
+        <label>밴드 / 방 이름</label>
+        <input type="text" id="input-title" value="스프링 밴드 합주">
+        <div class="row">
+          <div><label>시작일</label><input type="date" id="input-start"></div>
+          <div><label>종료일</label><input type="date" id="input-end"></div>
+        </div>
+        <button class="btn" onclick="createRoom()">합주방 생성 및 입장</button>
+      </div>
+
+      <div id="box-join" class="hidden" style="margin-top:20px; border-top:1px solid var(--border); padding-top:20px;">
+        <label>6자리 방 코드</label>
+        <input type="text" id="input-code" placeholder="예: BAND42" style="text-transform:uppercase; font-size:18px; font-weight:700;">
+        <button class="btn" onclick="joinRoom()">방으로 입장하기</button>
+      </div>
+    </div>
+
+    <!-- 메인 룸 뷰 -->
+    <div id="view-room" class="hidden">
+      <div class="card" style="display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <h2 id="room-title" style="margin:0;">-</h2>
+          <div id="room-dates" style="font-size:13px; color:var(--gray); margin-top:4px;">-</div>
+        </div>
+        <div class="row">
+          <button class="btn btn-secondary" style="padding:10px; font-size:13px;" onclick="copyLink()">링크만 복사 🔗</button>
+          <button class="btn" style="padding:10px; font-size:13px; background:#fee500; color:#3c1e1e;" onclick="copyKakao()">카카오톡 공유 💬</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>내 가능 시간 입력</h2>
+        <div class="row">
+          <div><label>이름</label><input type="text" id="user-name" placeholder="예: 김합주"></div>
+          <div>
+            <label>파트 / 세션</label>
+            <select id="user-session">
+              <option value="보컬">보컬</option>
+              <option value="일렉기타">일렉기타</option>
+              <option value="통기타">통기타</option>
+              <option value="베이스">베이스</option>
+              <option value="드럼">드럼</option>
+              <option value="건반">건반</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="segmented">
+          <button class="seg-btn active" id="mode-grid-btn" onclick="setMode('grid')">표로 고르기</button>
+          <button class="seg-btn" id="mode-text-btn" onclick="setMode('text')">텍스트 입력</button>
+        </div>
+
+        <div id="sec-grid">
+          <div style="font-size:12px; color:var(--accent); font-weight:600; margin-bottom:8px;">💡 드래그하거나 터치해서 시간대를 선택하세요.</div>
+          <div class="grid-wrap">
+            <table class="time-grid">
+              <thead><tr id="grid-head"></tr></thead>
+              <tbody id="grid-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="sec-text" class="hidden">
+          <label>텍스트 입력 예시</label>
+          <textarea id="text-input" rows="6" placeholder="19일 ~9시, 20시 이후 가능&#10;20 19시 이후 가능&#10;24,25 X"></textarea>
+          <button class="btn btn-secondary" style="margin-bottom:12px;" onclick="parseText()">텍스트를 표에 반영하기</button>
+        </div>
+
+        <button class="btn" style="margin-top:16px;" onclick="saveSchedule()">내 시간 저장 / 업데이트</button>
+      </div>
+
+      <div class="card">
+        <h2>전체 팀원 현황</h2>
+        <div style="font-size:12px; color:var(--gray); margin-bottom:8px;">이름을 누르면 입력했던 일정을 불러와 수정할 수 있습니다.</div>
+        <div id="member-tags"></div>
+        <div class="grid-wrap" style="margin-top:12px;">
+          <table class="time-grid">
+            <thead><tr id="heat-head"></tr></thead>
+            <tbody id="heat-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let code = "", room = null, selected = new Set(), isDown = false, dragAdd = true;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const today = new Date();
+      const next = new Date(); next.setDate(today.getDate() + 7);
+      document.getElementById('input-start').value = today.toISOString().split('T')[0];
+      document.getElementById('input-end').value = next.toISOString().split('T')[0];
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const qCode = urlParams.get('code');
+      if (qCode) loadRoom(qCode.toUpperCase());
+
+      window.addEventListener('mouseup', () => isDown = false);
+      window.addEventListener('touchend', () => isDown = false);
+    });
+
+    function switchLobby(type) {
+      document.getElementById('tab-create').classList.toggle('active', type === 'create');
+      document.getElementById('tab-join').classList.toggle('active', type === 'join');
+      document.getElementById('box-create').classList.toggle('hidden', type !== 'create');
+      document.getElementById('box-join').classList.toggle('hidden', type !== 'join');
+    }
+
+    function createRoom() {
+      const title = document.getElementById('input-title').value.trim() || '합주 조율';
+      const start = document.getElementById('input-start').value;
+      const end = document.getElementById('input-end').value;
+      if (!start || !end) return alert('날짜를 지정해주세요.');
+      if (start > end) return alert('시작일이 종료일보다 빠를 수 없습니다.');
+
+      const newCode = 'BAND' + Math.floor(10 + Math.random() * 90);
+      const data = { title, start, end, members: {}, votes: {} };
+      localStorage.setItem('room_' + newCode, JSON.stringify(data));
+      loadRoom(newCode);
+    }
+
+    function joinRoom() {
+      const c = document.getElementById('input-code').value.trim().toUpperCase();
+      if (!c) return alert('코드를 입력하세요.');
+      if (!localStorage.getItem('room_' + c)) return alert('존재하지 않는 방 코드입니다.');
+      loadRoom(c);
+    }
+
+    function loadRoom(c) {
+      code = c;
+      room = JSON.parse(localStorage.getItem('room_' + code));
+      document.getElementById('view-lobby').classList.add('hidden');
+      document.getElementById('view-room').classList.remove('hidden');
+      document.getElementById('room-info').classList.remove('hidden');
+      document.getElementById('badge-code').innerText = `코드: ${code}`;
+      document.getElementById('room-title').innerText = room.title;
+      document.getElementById('room-dates').innerText = `${room.start} ~ ${room.end}`;
+      
+      selected.clear();
+      renderGrid();
+      renderHeatmap();
+    }
+
+    function goLobby() {
+      document.getElementById('view-room').classList.add('hidden');
+      document.getElementById('room-info').classList.add('hidden');
+      document.getElementById('view-lobby').classList.remove('hidden');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    function getDates() {
+      const arr = [];
+      let cur = new Date(room.start), last = new Date(room.end);
+      while (cur <= last) {
+        arr.push(new Date(cur));
+        cur.setDate(cur.getDate() + 1);
+      }
+      return arr;
+    }
+
+    function renderGrid() {
+      const dates = getDates();
+      const days = ['일', '월', '화', '수', '목', '금', '토'];
+      let hHtml = '<th>시간</th>';
+      dates.forEach(d => {
+        hHtml += `<th>${d.getMonth()+1}/${d.getDate()}<br><span style="font-size:10px;color:var(--gray)">(${days[d.getDay()]})</span></th>`;
+      });
+      document.getElementById('grid-head').innerHTML = hHtml;
+
+      let bHtml = '';
+      for (let h = 0; h < 24; h++) {
+        let tStr = String(h).padStart(2, '0') + ':00';
+        bHtml += `<tr><th>${tStr}</th>`;
+        dates.forEach(d => {
+          let k = `${d.toISOString().split('T')[0]}_${h}`;
+          let sel = selected.has(k) ? 'selected' : '';
+          bHtml += `<td class="slot ${sel}" onmousedown="onDown('${k}')" onmouseenter="onEnter('${k}')" onclick="onClick('${k}')">-</td>`;
+        });
+        bHtml += '</tr>';
+      }
+      document.getElementById('grid-body').innerHTML = bHtml;
+    }
+
+    function onDown(k) {
+      isDown = true;
+      dragAdd = !selected.has(k);
+      if (dragAdd) selected.add(k); else selected.delete(k);
+      renderGrid();
+    }
+    function onEnter(k) {
+      if (!isDown) return;
+      if (dragAdd) selected.add(k); else selected.delete(k);
+      renderGrid();
+    }
+    function onClick(k) {
+      if (selected.has(k)) selected.delete(k); else selected.add(k);
+      renderGrid();
+    }
+
+    function setMode(m) {
+      document.getElementById('mode-grid-btn').classList.toggle('active', m === 'grid');
+      document.getElementById('mode-text-btn').classList.toggle('active', m === 'text');
+      document.getElementById('sec-grid').classList.toggle('hidden', m !== 'grid');
+      document.getElementById('sec-text').classList.toggle('hidden', m !== 'text');
+    }
+
+    function parseText() {
+      const lines = document.getElementById('text-input').value.split('\n');
+      const dates = getDates();
+      let cnt = 0;
+
+      lines.forEach(line => {
+        let l = line.trim();
+        if (!l) return;
+        let m = l.match(/^([\d,\-]+)(?:일)?\s*[:\s\-]\s*(.*)$/);
+        if (!m) return;
+        
+        let days = [];
+        let dPart = m[1];
+        if (dPart.includes(',')) dPart.split(',').forEach(x => days.push(parseInt(x)));
+        else if (dPart.includes('-')) {
+          let p = dPart.split('-');
+          for(let i=parseInt(p[0]); i<=parseInt(p[1]); i++) days.push(i);
+        } else days.push(parseInt(dPart));
+
+        let rule = m[2].trim().toLowerCase();
+
+        days.forEach(day => {
+          let target = dates.find(d => d.getDate() === day);
+          if (!target) return;
+          let kStr = target.toISOString().split('T')[0];
+          cnt++;
+
+          if (rule === 'x' || rule === '불가') {
+            for(let h=0; h<24; h++) selected.delete(`${kStr}_${h}`);
+            return;
+          }
+          if (rule.includes('가능') && !rule.includes('이후') && !rule.includes('이전')) {
+            for(let h=0; h<24; h++) selected.add(`${kStr}_${h}`);
+            return;
+          }
+
+          rule.split(',').forEach(tok => {
+            tok = tok.trim();
+            let bM = tok.match(/(?:~\s*(\d+)|(\d+)\s*시?\s*이전)/);
+            if (bM) {
+              let end = parseInt(bM[1] || bM[2]);
+              for(let h=0; h<end; h++) selected.add(`${kStr}_${h}`);
+            }
+            let aM = tok.match(/(?:(\d+)\s*시?\s*이후|(\d+)\s*~)/);
+            if (aM) {
+              let start = parseInt(aM[1] || aM[2]);
+              for(let h=start; h<24; h++) selected.add(`${kStr}_${h}`);
+            }
+          });
+        });
+      });
+
+      setMode('grid');
+      renderGrid();
+      alert(cnt > 0 ? '텍스트가 반영되었습니다!' : '형식을 다시 확인해주세요.');
+    }
+
+    function saveSchedule() {
+      const name = document.getElementById('user-name').value.trim();
+      const session = document.getElementById('user-session').value;
+      if (!name) return alert('이름을 입력해주세요.');
+
+      const mKey = `${name}_${session}`;
+      room.members[mKey] = { name, session, slots: Array.from(selected) };
+      localStorage.setItem('room_' + code, JSON.stringify(room));
+      alert('저장되었습니다!');
+      renderHeatmap();
+    }
+
+    function loadMember(k) {
+      let m = room.members[k];
+      if (!m) return;
+      document.getElementById('user-name').value = m.name;
+      document.getElementById('user-session').value = m.session;
+      selected.clear();
+      m.slots.forEach(s => selected.add(s));
+      setMode('grid');
+      renderGrid();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      alert(`${m.name}님의 일정을 불러왔습니다.`);
+    }
+
+    function renderHeatmap() {
+      const dates = getDates();
+      const members = room.members || {};
+      const mKeys = Object.keys(members);
+
+      let tagHtml = mKeys.length === 0 ? '<span style="color:var(--gray);font-size:13px">아직 제출한 팀원이 없습니다.</span>' : '';
+      mKeys.forEach(k => {
+        let m = members[k];
+        tagHtml += `<span class="badge" onclick="loadMember('${k}')">${m.session} ${m.name} ✏️</span>`;
+      });
+      document.getElementById('member-tags').innerHTML = tagHtml;
+
+      let counts = {};
+      mKeys.forEach(k => {
+        (members[k].slots || []).forEach(s => counts[s] = (counts[s] || 0) + 1);
+      });
+
+      let hHtml = '<th>시간</th>';
+      dates.forEach(d => hHtml += `<th>${d.getMonth()+1}/${d.getDate()}</th>`);
+      document.getElementById('heat-head').innerHTML = hHtml;
+
+      let bHtml = '';
+      for (let h = 0; h < 24; h++) {
+        let tStr = String(h).padStart(2, '0') + ':00';
+        bHtml += `<tr><th>${tStr}</th>`;
+        dates.forEach(d => {
+          let k = `${d.toISOString().split('T')[0]}_${h}`;
+          let cnt = counts[k] || 0;
+          bHtml += `<td class="heat-${Math.min(cnt, 5)}">${cnt > 0 ? cnt + '명' : '-'}</td>`;
+        });
+        bHtml += '</tr>';
+      }
+      document.getElementById('heat-body').innerHTML = bHtml;
+    }
+
+    function copyLink() {
+      const url = `${window.location.origin}${window.location.pathname}?code=${code}`;
+      navigator.clipboard.writeText(url).then(() => alert('링크가 복사되었습니다.'));
+    }
+
+    function copyKakao() {
+      const url = `${window.location.origin}${window.location.pathname}?code=${code}`;
+      const msg = `🎸 [${room.title}] 합주 시간 조율\n📅 기간: ${room.start} ~ ${room.end}\n🔑 코드: ${code}\n\n가능 시간을 아래 링크로 입력해주세요!\n${url}`;
+      navigator.clipboard.writeText(msg).then(() => alert('카카오톡 공유 문구가 복사되었습니다!'));
+    }
+  </script>
+</body>
+</html>
